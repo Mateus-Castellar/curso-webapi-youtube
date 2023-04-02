@@ -1,7 +1,15 @@
+using Curso.Infra.Context;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddDbContext<AppMonitoramentoContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AppConnection")));
+
 builder.Services.AddControllers();
+
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
