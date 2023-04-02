@@ -1,4 +1,6 @@
-﻿using Curso.Domain.Models;
+﻿using AutoMapper;
+using Curso.API.DTO;
+using Curso.Domain.Models;
 using Curso.Infra.Context;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,51 +12,89 @@ namespace Curso.API.Controllers;
 public class EstacionamentoController : ControllerBase
 {
     private readonly AppMonitoramentoContext _context;
+    private readonly IMapper _mapper;
 
-    public EstacionamentoController(AppMonitoramentoContext context)
+    public EstacionamentoController(AppMonitoramentoContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
     [HttpPost]
-    public async Task<IActionResult> Adicionar(EstacionamentoModel estacionamento)
+    public async Task<IActionResult> Adicionar(AdicionarEstacionamentoDTO estacionamento)
     {
-        _context.Estacionamentos.Add(estacionamento);
-        var resultado = await _context.SaveChangesAsync();
-        return resultado > 0 ? Ok() : BadRequest();
+        try
+        {
+            _context.Estacionamentos.Add(_mapper.Map<EstacionamentoModel>(estacionamento));
+            var resultado = await _context.SaveChangesAsync();
+            return resultado > 0 ? Ok(estacionamento) : BadRequest();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500);
+        }
     }
 
     [HttpGet]
     public async Task<IActionResult> ListarTodos()
     {
-        var estacionamentos = await _context.Estacionamentos.ToListAsync();
-        return Ok(estacionamentos);
+        try
+        {
+            var estacionamentos = await _context.Estacionamentos
+                .ToListAsync();
+
+            if (estacionamentos.Count == 0) return NoContent();
+
+            return Ok(_mapper.Map<List<ListarEstacionamentosDTO>>(estacionamentos));
+        }
+        catch (Exception)
+        {
+            return StatusCode(500);
+        }
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Remover(Guid id)
     {
-        var estacionamento = await _context.Estacionamentos
-            .FirstOrDefaultAsync(lbda => lbda.Id == id);
+        try
+        {
+            var estacionamento = await _context.Estacionamentos
+                .FirstOrDefaultAsync(lbda => lbda.Id == id);
 
-        _context.Estacionamentos.Remove(estacionamento);
-        var resultado = await _context.SaveChangesAsync();
+            if (estacionamento is null) return NotFound();
 
-        return resultado > 0 ? Ok() : BadRequest();
+            _context.Estacionamentos.Remove(estacionamento);
+            var resultado = await _context.SaveChangesAsync();
+
+            return resultado > 0 ? Ok() : BadRequest();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500);
+        }
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Atualizar(Guid id, string nome, int capacidade)
+    public async Task<IActionResult> Atualizar(Guid id, AtualizarEstacionamentoDTO atualizar)
     {
-        var estacionamento = await _context.Estacionamentos
-            .FirstOrDefaultAsync(lbda => lbda.Id == id);
+        try
+        {
+            var estacionamento = await _context.Estacionamentos
+                .FirstOrDefaultAsync(lbda => lbda.Id == id);
 
-        estacionamento.Nome = nome;
-        estacionamento.Capacidade = capacidade;
+            if (estacionamento is null) return NotFound();
 
-        _context.Estacionamentos.Update(estacionamento);
-        var resultado = await _context.SaveChangesAsync();
+            estacionamento.Nome = atualizar.Nome;
+            estacionamento.Capacidade = atualizar.Capacidade;
 
-        return resultado > 0 ? Ok() : BadRequest();
+            _context.Estacionamentos.Update(estacionamento);
+            var resultado = await _context.SaveChangesAsync();
+
+            return resultado > 0 ? Ok() : BadRequest();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500);
+        }
     }
 }
